@@ -1,0 +1,64 @@
+/* Import these styles for the slider */
+@import "slick-carousel/slick/slick.css";
+@import "slick-carousel/slick/slick-theme.css";
+
+/* Minimal CSS Reset */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth; /* Smooth scrolling across links */
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif; /* You can choose your preferred font */
+  line-height: 1.5; /* Better readability */
+  background-color: #fff; /* Optional: Default background */
+  color: #000; /* Optional: Default text color */
+}
+
+a {
+  color: inherit; /* Remove default link styling and inherit text color */
+  text-decoration: none; /* Remove underline */
+}
+
+ul,
+ol {
+  list-style: none; /* Remove bullets/numbers from lists */
+}
+
+button {
+  font: inherit; /* Ensure buttons use the same font as the body */
+  background: none; /* Remove default button background */
+  border: none; /* Remove default button borders */
+  cursor: pointer; /* Add pointer cursor to buttons */
+}
+
+img {
+  max-width: 100%; /* Ensure images don't overflow their containers */
+  height: auto; /* Maintain aspect ratio */
+  display: block; /* Remove inline gap below images inside block elements */
+}
+
+table {
+  border-collapse: collapse; /* Remove spacing between table cells */
+  border-spacing: 0;
+}
+
+input,
+textarea {
+  font: inherit; /* Ensure form elements use the same font as the body */
+  border: none; /* Remove default borders */
+  outline: none; /* Remove default focus outline */
+}
+
+textarea {
+  resize: none; /* Prevent textarea resizing (optional) */
+}
