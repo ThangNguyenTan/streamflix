@@ -1,52 +1,11 @@
 import styled from "styled-components";
 
 // Main Navigation Container
-export const NavContainer = styled.nav<{ isScrolled: boolean }>`
-  position: sticky;
-  top: 0;
-  left: 0;
+export const NavContainer = styled.nav`
+  position: relative;
   width: 100%;
   z-index: 1000;
-  background: ${({ isScrolled }) =>
-    isScrolled
-      ? "rgba(6, 6, 6, 0.94)"
-      : "linear-gradient(180deg, rgba(6, 6, 6, 0.9) 0%, rgba(6, 6, 6, 0.45) 55%, rgba(6, 6, 6, 0) 100%)"};
-  backdrop-filter: ${({ isScrolled }) => (isScrolled ? "blur(16px)" : "none")};
-  border-bottom: ${({ isScrolled }) =>
-    isScrolled ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid transparent"};
-  box-shadow: ${({ isScrolled }) =>
-    isScrolled ? "0 18px 36px rgba(0, 0, 0, 0.45)" : "none"};
-  transition: background 0.35s ease, backdrop-filter 0.35s ease,
-    border-bottom 0.35s ease, box-shadow 0.35s ease;
-  isolation: isolate;
-
-  @supports not (backdrop-filter: blur(0)) {
-    backdrop-filter: none;
-    background: ${({ isScrolled }) =>
-      isScrolled
-        ? "rgba(6, 6, 6, 0.94)"
-        : "linear-gradient(180deg, rgba(6, 6, 6, 0.9) 0%, rgba(6, 6, 6, 0.45) 55%, rgba(6, 6, 6, 0) 100%)"};
-  }
-
-  &::after {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    left: 0;
-    right: 0;
-    bottom: -64px;
-    height: 64px;
-    background: linear-gradient(180deg, rgba(6, 6, 6, 0.5) 0%, rgba(6, 6, 6, 0) 100%);
-    opacity: ${({ isScrolled }) => (isScrolled ? 0 : 1)};
-    transition: opacity 0.35s ease;
-    pointer-events: none;
-  }
-
-  @media (max-width: 768px) {
-    background: ${({ isScrolled }) =>
-      isScrolled ? "rgba(6, 6, 6, 0.95)" : "rgba(6, 6, 6, 0.85)"};
-    backdrop-filter: ${({ isScrolled }) => (isScrolled ? "blur(14px)" : "none")};
-  }
+  background: transparent;
 `;
 
 // Navigation Content Wrapper

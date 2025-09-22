@@ -43,26 +43,8 @@ export const NavigationBar: React.FC = () => {
   const location = useLocation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isScrolled, setIsScrolled] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 40);
-    };
-
-    handleScroll();
-    window.addEventListener("scroll", handleScroll);
-
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-    };
-  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -112,7 +94,7 @@ export const NavigationBar: React.FC = () => {
   };
 
   return (
-    <NavContainer isScrolled={isScrolled}>
+    <NavContainer>
       <NavContent>
         <NavLeft>
           <LogoSection>
