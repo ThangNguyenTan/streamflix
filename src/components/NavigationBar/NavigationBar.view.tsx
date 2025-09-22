@@ -69,12 +69,24 @@ export const NavigationBar: React.FC = () => {
     navigate("/");
   };
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const queryFromParams = params.get("query") ?? "";
+    setSearchQuery((current) =>
+      current === queryFromParams ? current : queryFromParams
+    );
+  }, [location.pathname, location.search]);
+
   const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (searchQuery.trim()) {
-      // TODO: Implement search functionality
-      console.log("Searching for:", searchQuery);
+    const normalizedQuery = searchQuery.trim();
+
+    if (normalizedQuery) {
+      navigate(`/search?query=${encodeURIComponent(normalizedQuery)}`);
+      return;
     }
+
+    navigate("/search");
   };
 
   const getInitials = (name: string) =>

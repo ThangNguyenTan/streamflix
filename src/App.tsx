@@ -4,7 +4,14 @@ import { theme } from "./theme";
 // import HomePage from "./pages/HomePage";
 // import MovieDetailPage from "./pages/MovieDetailPage";
 import { AuthProvider } from "./contexts";
-import { HomePage, LoginPage, MovieDetailsPage, SignupPage, TVShowDetailsPage } from "./pages";
+import {
+  HomePage,
+  LoginPage,
+  MovieDetailsPage,
+  SearchPage,
+  SignupPage,
+  TVShowDetailsPage,
+} from "./pages";
 
 function App() {
   return (
@@ -25,6 +32,7 @@ function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/movie/:id" element={<MovieDetailsPage />} />
             <Route path="/tvshow/:id" element={<TVShowDetailsPage />} />
+            <Route path="/search" element={<SearchPage />} />
           </Routes>
         </Router>
       </AuthProvider>
