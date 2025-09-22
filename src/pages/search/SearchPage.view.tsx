@@ -10,6 +10,8 @@ import {
   type SearchResult,
   type SearchTab,
 } from "../../services/api";
+import { MovieCard, TVShowCard } from "../home/components";
+import type { Movie, TVShow } from "../../types";
 import {
   ContentLayout,
   EmptyState,
@@ -25,18 +27,10 @@ import {
   LoadingState,
   MainColumn,
   PageWrapper,
-  PosterFallback,
-  PosterImage,
-  PosterWrapper,
   QuerySubtitle,
   QueryTitle,
-  RatingBadge,
   ResetButton,
-  ResultCard,
-  ResultContent,
-  ResultMeta,
-  ResultOverview,
-  ResultTitle,
+  ResultCardWrapper,
   ResultsGrid,
   ResultsPanel,
   SearchBarButton,
@@ -48,8 +42,6 @@ import {
   SidebarCard,
   SidebarEmptyState,
   SidebarHeading,
-  TabButton,
-  TabsList,
   TrendingInfo,
   TrendingItem,
   TrendingList,
@@ -58,12 +50,8 @@ import {
   TrendingTitle,
 } from "./SearchPage.styled";
 
-const SEARCH_TABS: { label: string; value: SearchTab }[] = [
-  { label: "All", value: "all" },
-  { label: "Movies & TV", value: "movie_tv" },
-  { label: "Episodes", value: "episodes" },
-  { label: "Similars", value: "similars" },
-];
+const DEFAULT_SEARCH_TAB: SearchTab = "movie_tv";
+const DEFAULT_RESULTS_LIMIT = 18;
 
 const TYPE_FILTERS: { label: string; value: NonNullable<SearchFilters["type"]> }[] = [
   { label: "All Types", value: "all" },
@@ -133,7 +121,6 @@ export const SearchPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryParam = searchParams.get("query") ?? "";
   const [searchInput, setSearchInput] = useState(queryParam);
-  const [activeTab, setActiveTab] = useState<SearchTab>("all");
   const [filters, setFilters] = useState<SearchFilters>({ ...DEFAULT_FILTERS });
 
   useEffect(() => {
@@ -142,10 +129,6 @@ export const SearchPage: React.FC = () => {
 
   const normalizedQuery = queryParam.trim();
   const debouncedQuery = useDebouncedValue(normalizedQuery, 450);
-
-  useEffect(() => {
-    setActiveTab("all");
-  }, [normalizedQuery]);
 
   const { data: genreOptions = [] } = useQuery({
     queryKey: ["genres", "combined"],
@@ -158,19 +141,37 @@ export const SearchPage: React.FC = () => {
     [genreOptions]
   );
 
+  const genresMap = useMemo(
+    () =>
+      genreOptions.reduce(
+        (map, genre) => {
+          map[genre.id] = genre.name;
+          return map;
+        },
+        {} as Record<number, string>
+      ),
+    [genreOptions]
+  );
+
   const { data: searchResults = [], isPending: isSearchPending } = useQuery({
-    queryKey: ["search", { query: debouncedQuery, tab: activeTab, filters }],
+    queryKey: [
+      "search",
+      { query: debouncedQuery, tab: DEFAULT_SEARCH_TAB, filters },
+    ],
     queryFn: () =>
       fetchSearchResults({
         query: debouncedQuery,
-        tab: activeTab,
+        tab: DEFAULT_SEARCH_TAB,
         filters,
       }),
     enabled: debouncedQuery.length > 0,
     staleTime: 1000 * 60,
   });
 
-  const { data: trendingResults = [] } = useQuery({
+  const {
+    data: trendingResults = [],
+    isPending: isTrendingPending,
+  } = useQuery({
     queryKey: ["trending", "daily"],
     queryFn: fetchDailyTrending,
     staleTime: 1000 * 60 * 60,
@@ -226,7 +227,97 @@ export const SearchPage: React.FC = () => {
   };
 
   const hasQuery = debouncedQuery.length > 0;
-  const hasResults = searchResults.length > 0;
+
+  const trendingMedia = useMemo(
+    () =>
+      trendingResults.filter(
+        (item) => item.media_type === "movie" || item.media_type === "tv"
+      ),
+    [trendingResults]
+  );
+
+  const defaultResults = useMemo(
+    () => trendingMedia.slice(0, DEFAULT_RESULTS_LIMIT),
+    [trendingMedia]
+  );
+
+  const filteredDefaultResults = useMemo(() => {
+    if (hasQuery) {
+      return defaultResults;
+    }
+
+    const { type, genreId, year, sortBy } = filters;
+    let filtered = defaultResults;
+
+    if (type && type !== "all") {
+      filtered = filtered.filter((item) => {
+        if (type === "movie") {
+          return item.media_type === "movie";
+        }
+
+        if (type === "tv") {
+          return item.media_type === "tv";
+        }
+
+        return true;
+      });
+    }
+
+    if (genreId) {
+      filtered = filtered.filter(
+        (item) => Array.isArray(item.genreIds) && item.genreIds.includes(genreId)
+      );
+    }
+
+    if (year) {
+      filtered = filtered.filter(
+        (item) =>
+          typeof item.releaseDate === "string" &&
+          item.releaseDate.startsWith(year)
+      );
+    }
+
+    if (sortBy) {
+      const [field, direction] = sortBy.split(".");
+      const multiplier = direction === "asc" ? 1 : -1;
+
+      filtered = [...filtered].sort((a, b) => {
+        const resolveValue = (entry: SearchResult) => {
+          switch (field) {
+            case "vote_average":
+              return typeof entry.voteAverage === "number"
+                ? entry.voteAverage
+                : 0;
+            case "release_date":
+              return entry.releaseDate ? Date.parse(entry.releaseDate) : 0;
+            default:
+              return typeof entry.popularity === "number"
+                ? entry.popularity
+                : 0;
+          }
+        };
+
+        return (resolveValue(a) - resolveValue(b)) * multiplier;
+      });
+    }
+
+    return filtered;
+  }, [defaultResults, filters, hasQuery]);
+
+  const displayedResults = hasQuery ? searchResults : filteredDefaultResults;
+
+  const supportedResults = useMemo(
+    () =>
+      displayedResults.filter(
+        (result) =>
+          (result.media_type === "movie" || result.media_type === "tv") &&
+          Boolean(result.posterPath)
+      ),
+    [displayedResults]
+  );
+
+  const isLoading = hasQuery ? isSearchPending : isTrendingPending;
+  const hasDisplayResults = supportedResults.length > 0;
 
   return (
     <>
@@ -237,7 +328,7 @@ export const SearchPage: React.FC = () => {
           <QuerySubtitle>
             {hasQuery
               ? `Results for "${debouncedQuery}"`
-              : "Use the search bar to discover movies, shows, and more."}
+              : "Explore trending movies and shows or use the search bar to find something specific."}
           </QuerySubtitle>
           <SearchBarForm role="search" onSubmit={handleSearchSubmit}>
             <SearchBarIcon aria-hidden="true">🔍</SearchBarIcon>
@@ -256,21 +347,76 @@ export const SearchPage: React.FC = () => {
 
         <ContentLayout>
           <MainColumn>
-            <TabsList role="tablist">
-              {SEARCH_TABS.map((tab) => (
-                <TabButton
-                  key={tab.value}
-                  type="button"
-                  role="tab"
-                  aria-selected={activeTab === tab.value}
-                  $active={activeTab === tab.value}
-                  onClick={() => setActiveTab(tab.value)}
-                >
-                  {tab.label}
-                </TabButton>
-              ))}
-            </TabsList>
+            <ResultsPanel>
+              {isLoading && (
+                <LoadingState>
+                  {hasQuery ? "Loading results…" : "Loading trending titles…"}
+                </LoadingState>
+              )}
 
+              {!isLoading && !hasDisplayResults && (
+                <EmptyState>
+                  <EmptyTitle>
+                    {hasQuery ? "No matches just yet" : "No titles match right now"}
+                  </EmptyTitle>
+                  <EmptySubtitle>
+                    {hasQuery
+                      ? `We couldn’t find anything for "${debouncedQuery}" with the current filters. Try adjusting them or searching for another title.`
+                      : "Try adjusting the filters to explore more trending titles or start a search above."}
+                  </EmptySubtitle>
+                </EmptyState>
+              )}
+
+              {!isLoading && hasDisplayResults && (
+                <ResultsGrid>
+                  {supportedResults.map((result) => {
+                    if (result.media_type === "movie") {
+                      const movie: Movie = {
+                        id: result.id,
+                        title: result.title,
+                        overview: result.overview || fallbackOverview,
+                        poster_path: result.posterPath ?? "",
+                        backdrop_path:
+                          result.backdropPath ?? result.posterPath ?? "",
+                        release_date: result.releaseDate ?? "",
+                        vote_average: result.voteAverage ?? 0,
+                        genre_ids: result.genreIds ?? [],
+                      };
+
+                      return (
+                        <ResultCardWrapper key={`movie-${result.id}`}>
+                          <MovieCard movie={movie} genresMap={genresMap} />
+                        </ResultCardWrapper>
+                      );
+                    }
+
+                    if (result.media_type === "tv") {
+                      const tvShow: TVShow = {
+                        id: result.id,
+                        name: result.title,
+                        overview: result.overview || fallbackOverview,
+                        poster_path: result.posterPath ?? "",
+                        backdrop_path:
+                          result.backdropPath ?? result.posterPath ?? "",
+                        vote_average: result.voteAverage ?? 0,
+                        genre_ids: result.genreIds ?? [],
+                      };
+
+                      return (
+                        <ResultCardWrapper key={`tv-${result.id}`}>
+                          <TVShowCard tvShow={tvShow} genresMap={genresMap} />
+                        </ResultCardWrapper>
+                      );
+                    }
+
+                    return null;
+                  })}
+                </ResultsGrid>
+              )}
+            </ResultsPanel>
+          </MainColumn>
+
+          <Sidebar>
             <FiltersPanel>
               <FiltersTopRow>
                 <FiltersTitle>Filters</FiltersTitle>
@@ -346,86 +492,17 @@ export const SearchPage: React.FC = () => {
               </FilterGroup>
             </FiltersPanel>
 
-            <ResultsPanel>
-              {!hasQuery && (
-                <EmptyState>
-                  <EmptyTitle>Ready to explore?</EmptyTitle>
-                  <EmptySubtitle>
-                    Start typing in the search bar to look for titles, genres, or
-                    people. We&rsquo;ll surface the best matches instantly.
-                  </EmptySubtitle>
-                </EmptyState>
-              )}
-
-              {hasQuery && isSearchPending && <LoadingState>Loading results…</LoadingState>}
-
-              {hasQuery && !isSearchPending && !hasResults && (
-                <EmptyState>
-                  <EmptyTitle>No matches just yet</EmptyTitle>
-                  <EmptySubtitle>
-                    We couldn&rsquo;t find anything for "{debouncedQuery}" with the
-                    current filters. Try adjusting them or searching for another
-                    title.
-                  </EmptySubtitle>
-                </EmptyState>
-              )}
-
-              {hasResults && (
-                <ResultsGrid>
-                  {searchResults.map((result) => {
-                    const mediaLabel = formatMediaLabel(result.media_type);
-                    const releaseYear = formatYear(result.releaseDate);
-                    const posterInitial = result.title.charAt(0).toUpperCase();
-
-                    return (
-                      <ResultCard
-                        key={`${result.media_type}-${result.id}`}
-                        aria-label={`${mediaLabel}: ${result.title}`}
-                      >
-                        <PosterWrapper>
-                          {result.posterUrl ? (
-                            <PosterImage
-                              src={result.posterUrl}
-                              alt={result.title}
-                              loading="lazy"
-                            />
-                          ) : (
-                            <PosterFallback aria-hidden="true">
-                              {posterInitial}
-                            </PosterFallback>
-                          )}
-                        </PosterWrapper>
-                        <ResultContent>
-                          <ResultTitle>{result.title}</ResultTitle>
-                          <ResultMeta>
-                            <span>{mediaLabel}</span>
-                            {releaseYear && <span>{releaseYear}</span>}
-                            {typeof result.voteAverage === "number" && result.voteAverage > 0 && (
-                              <RatingBadge>⭐ {result.voteAverage.toFixed(1)}</RatingBadge>
-                            )}
-                          </ResultMeta>
-                          <ResultOverview>
-                            {result.overview || fallbackOverview}
-                          </ResultOverview>
-                        </ResultContent>
-                      </ResultCard>
-                    );
-                  })}
-                </ResultsGrid>
-              )}
-            </ResultsPanel>
-          </MainColumn>
-
-          <Sidebar>
             <SidebarCard>
               <SidebarHeading>Trending Today</SidebarHeading>
-              {trendingResults.length === 0 ? (
+              {isTrendingPending ? (
+                <SidebarEmptyState>Loading trending titles…</SidebarEmptyState>
+              ) : trendingMedia.length === 0 ? (
                 <SidebarEmptyState>
                   Trending titles are warming up. Check back soon!
                 </SidebarEmptyState>
               ) : (
                 <TrendingList>
-                  {trendingResults.slice(0, 8).map((item, index) => {
+                  {trendingMedia.slice(0, 8).map((item, index) => {
                     const mediaLabel = formatMediaLabel(item.media_type);
                     const releaseYear = formatYear(item.releaseDate);
 

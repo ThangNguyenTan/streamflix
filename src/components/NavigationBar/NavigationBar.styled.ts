@@ -18,7 +18,7 @@ export const NavContent = styled.div`
   gap: 2rem;
   padding: 0 3rem;
   height: 76px;
-  max-width: 1300px;
+  max-width: 1680px;
   margin: 0 auto;
   width: 100%;
 

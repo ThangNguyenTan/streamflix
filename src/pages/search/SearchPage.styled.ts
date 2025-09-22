@@ -23,7 +23,7 @@ export const SearchHeader = styled.header`
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  max-width: 1200px;
+  max-width: 1680px;
   margin: 0 auto 2.5rem;
 
   @media (max-width: 900px) {
@@ -140,7 +140,7 @@ export const QuerySubtitle = styled.p`
 `;
 
 export const ContentLayout = styled.div`
-  max-width: 1200px;
+  max-width: 1680px;
   margin: 0 auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
@@ -289,12 +289,19 @@ export const ResultsPanel = styled.section`
 
 export const ResultsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.75rem;
+  justify-items: center;
 
   @media (max-width: 640px) {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   }
+`;
+
+export const ResultCardWrapper = styled.div`
+  width: 100%;
+  display: flex;
+  justify-content: center;
 `;
 
 export const ResultCard = styled.article`

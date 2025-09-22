@@ -18,6 +18,29 @@ const DEFAULT_POSTER_SIZE = "w500";
 
 export type SupportedMediaType = "movie" | "tv" | "person" | "episode";
 
+type RawMedia = Record<string, unknown>;
+
+const isRecord = (value: unknown): value is RawMedia =>
+  typeof value === "object" && value !== null;
+
+const toMediaArray = (value: unknown): RawMedia[] =>
+  Array.isArray(value) ? (value.filter(isRecord) as RawMedia[]) : [];
+
+const getString = (item: RawMedia, key: string): string | undefined => {
+  const value = item[key];
+  return typeof value === "string" ? value : undefined;
+};
+
+const getNumber = (item: RawMedia, key: string): number | undefined => {
+  const value = item[key];
+  return typeof value === "number" ? value : undefined;
+};
+
+const getArray = (item: RawMedia, key: string): unknown[] | undefined => {
+  const value = item[key];
+  return Array.isArray(value) ? value : undefined;
+};
+
 export interface SearchFilters {
   type?: "all" | "movie" | "tv";
   genreId?: number;
@@ -32,12 +55,15 @@ export interface SearchResult {
   media_type: SupportedMediaType;
   title: string;
   overview: string;
+  posterPath?: string | null;
+  backdropPath?: string | null;
   posterUrl?: string;
   backdropUrl?: string;
   releaseDate?: string;
   voteAverage?: number | null;
   popularity?: number | null;
   originalTitle?: string;
+  genreIds?: number[];
 }
 
 export interface SearchQueryOptions {
@@ -73,48 +99,65 @@ const resolveMediaType = (
 };
 
 const mapSearchResult = (
-  item: Record<string, any>,
+  item: RawMedia,
   override?: SupportedMediaType
 ): SearchResult => {
   const mediaType = resolveMediaType(item, override);
   const releaseDate =
-    item.release_date ??
-    item.first_air_date ??
-    item.air_date ??
-    item.episode_air_date ??
-    undefined;
+    getString(item, "release_date") ??
+    getString(item, "first_air_date") ??
+    getString(item, "air_date") ??
+    getString(item, "episode_air_date");
 
   const posterPath =
-    item.poster_path ?? item.profile_path ?? item.still_path ?? null;
+    getString(item, "poster_path") ??
+    getString(item, "profile_path") ??
+    getString(item, "still_path") ??
+    null;
+
+  const backdropPath =
+    getString(item, "backdrop_path") ??
+    getString(item, "still_path") ??
+    getString(item, "poster_path") ??
+    null;
+
+  const directGenreIds = getArray(item, "genre_ids")?.filter(
+    (value): value is number => typeof value === "number"
+  );
+
+  const fallbackGenreIds = getArray(item, "genres")
+    ?.map((genre) => (isRecord(genre) ? getNumber(genre, "id") : undefined))
+    .filter((value): value is number => typeof value === "number");
+
+  const genreIds = directGenreIds ?? fallbackGenreIds;
 
   return {
-    id: item.id,
+    id: getNumber(item, "id") ?? 0,
     media_type: mediaType,
     title:
-      item.title ??
-      item.name ??
-      item.original_name ??
-      item.original_title ??
+      getString(item, "title") ??
+      getString(item, "name") ??
+      getString(item, "original_name") ??
+      getString(item, "original_title") ??
       "Untitled",
-    overview: item.overview ?? "",
+    overview: getString(item, "overview") ?? "",
+    posterPath,
+    backdropPath,
     posterUrl: createImageUrl(
       posterPath,
       mediaType === "episode" ? "w300" : DEFAULT_POSTER_SIZE
     ),
-    backdropUrl: createImageUrl(item.backdrop_path ?? null, "w780"),
+    backdropUrl: createImageUrl(backdropPath ?? null, "w780"),
     releaseDate,
-    voteAverage:
-      typeof item.vote_average === "number" ? item.vote_average : null,
-    popularity: typeof item.popularity === "number" ? item.popularity : null,
+    voteAverage: getNumber(item, "vote_average") ?? null,
+    popularity: getNumber(item, "popularity") ?? null,
     originalTitle:
-      item.original_title ?? item.original_name ?? undefined,
+      getString(item, "original_title") ?? getString(item, "original_name") ?? undefined,
+    genreIds,
   };
 };
 
-const applySearchFilters = (
-  items: Record<string, any>[],
-  filters?: SearchFilters
-) => {
+const applySearchFilters = (items: RawMedia[], filters?: SearchFilters) => {
   if (!filters) {
     return items;
   }
@@ -137,23 +180,27 @@ const applySearchFilters = (
 
   if (genreId) {
     filteredItems = filteredItems.filter((item) => {
-      const genreIds =
-        item.genre_ids ??
-        (Array.isArray(item.genres)
-          ? item.genres.map((genre: { id: number }) => genre.id)
-          : []);
-      return Array.isArray(genreIds) && genreIds.includes(genreId);
+      const resolvedGenreIds =
+        getArray(item, "genre_ids")?.filter(
+          (value): value is number => typeof value === "number"
+        ) ??
+        getArray(item, "genres")
+          ?.map((genre) =>
+            isRecord(genre) ? getNumber(genre, "id") : undefined
+          )
+          .filter((value): value is number => typeof value === "number") ??
+        [];
+      return resolvedGenreIds.includes(genreId);
     });
   }
 
   if (year) {
     filteredItems = filteredItems.filter((item) => {
       const dateString =
-        item.release_date ??
-        item.first_air_date ??
-        item.air_date ??
-        item.episode_air_date ??
-        "";
+        getString(item, "release_date") ??
+        getString(item, "first_air_date") ??
+        getString(item, "air_date") ??
+        getString(item, "episode_air_date");
       return typeof dateString === "string" && dateString.startsWith(year);
     });
   }
@@ -162,24 +209,21 @@ const applySearchFilters = (
     const [field, direction] = sortBy.split(".");
     const multiplier = direction === "asc" ? 1 : -1;
     filteredItems = [...filteredItems].sort((a, b) => {
-      const resolveValue = (entry: Record<string, any>) => {
+      const resolveValue = (entry: RawMedia) => {
         switch (field) {
           case "vote_average":
-            return typeof entry.vote_average === "number"
-              ? entry.vote_average
-              : 0;
+            return getNumber(entry, "vote_average") ?? 0;
           case "release_date":
-            return Date.parse(
-              entry.release_date ??
-                entry.first_air_date ??
-                entry.air_date ??
-                entry.episode_air_date ??
-                "0"
-            );
+            {
+              const value =
+                getString(entry, "release_date") ??
+                getString(entry, "first_air_date") ??
+                getString(entry, "air_date") ??
+                getString(entry, "episode_air_date");
+              return value ? Date.parse(value) : 0;
+            }
           default:
-            return typeof entry.popularity === "number"
-              ? entry.popularity
-              : 0;
+            return getNumber(entry, "popularity") ?? 0;
         }
       };
 
@@ -293,11 +337,10 @@ export const fetchSearchResults = async ({
       },
     });
 
-    const results =
-      response.data.results?.map((item: Record<string, any>) => ({
-        ...item,
-        media_type: "episode",
-      })) ?? [];
+    const results = toMediaArray(response.data.results).map((item) => ({
+      ...item,
+      media_type: "episode",
+    }));
 
     const filtered = applySearchFilters(results, filters);
     return filtered.map((item) => mapSearchResult(item, "episode"));
@@ -312,11 +355,11 @@ export const fetchSearchResults = async ({
       },
     });
 
-    const seedResults: Record<string, any>[] = seedResponse.data.results ?? [];
-    const seedTitle = seedResults.find(
-      (item) =>
-        item && (item.media_type === "movie" || item.media_type === "tv")
-    );
+    const seedResults = toMediaArray(seedResponse.data.results);
+    const seedTitle = seedResults.find((item) => {
+      const mediaType = resolveMediaType(item);
+      return mediaType === "movie" || mediaType === "tv";
+    });
 
     if (!seedTitle) {
       return [];
@@ -331,8 +374,7 @@ export const fetchSearchResults = async ({
       }
     );
 
-    const similarResults: Record<string, any>[] =
-      similarResponse.data.results ?? [];
+    const similarResults = toMediaArray(similarResponse.data.results);
     const filtered = applySearchFilters(similarResults, filters);
 
     return filtered.map((item) =>
@@ -348,11 +390,14 @@ export const fetchSearchResults = async ({
     },
   });
 
-  let results: Record<string, any>[] = response.data.results ?? [];
+  let results = toMediaArray(response.data.results);
 
   if (tab === "movie_tv") {
     results = results.filter(
-      (item) => item.media_type === "movie" || item.media_type === "tv"
+      (item) => {
+        const mediaType = resolveMediaType(item);
+        return mediaType === "movie" || mediaType === "tv";
+      }
     );
   }
 
@@ -366,6 +411,6 @@ export const fetchDailyTrending = async (): Promise<SearchResult[]> => {
     params: { language: "en-US" },
   });
 
-  const results: Record<string, any>[] = response.data.results ?? [];
+  const results = toMediaArray(response.data.results);
   return results.map((item) => mapSearchResult(item));
 };
