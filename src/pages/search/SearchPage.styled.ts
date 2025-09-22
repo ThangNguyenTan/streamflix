@@ -22,12 +22,105 @@ export const PageWrapper = styled.main`
 export const SearchHeader = styled.header`
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1.25rem;
   max-width: 1200px;
   margin: 0 auto 2.5rem;
 
   @media (max-width: 900px) {
     margin-bottom: 2rem;
+  }
+`;
+
+export const SearchBarForm = styled.form`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 560px;
+  padding: 0.75rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  transition: border-color 0.2s ease, background 0.2s ease,
+    box-shadow 0.2s ease;
+
+  &:focus-within {
+    border-color: rgba(229, 9, 20, 0.9);
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 20px 44px rgba(0, 0, 0, 0.4);
+  }
+
+  @media (max-width: 640px) {
+    border-radius: 18px;
+    padding: 0.85rem;
+    gap: 0.65rem;
+  }
+`;
+
+export const SearchBarIcon = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.75);
+  pointer-events: none;
+`;
+
+export const SearchBarInput = styled.input`
+  flex: 1 1 220px;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: #fff;
+  font-size: 1rem;
+  line-height: 1.4;
+  outline: none;
+
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.55);
+  }
+
+  @media (max-width: 640px) {
+    flex-basis: 100%;
+  }
+`;
+
+export const SearchBarButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  padding: 0.55rem 1.35rem;
+  border: none;
+  border-radius: 999px;
+  background: ${({ theme }) => theme.colors.primary};
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+
+  &:hover,
+  &:focus-visible {
+    transform: translateY(-1px);
+    background: rgba(229, 9, 20, 0.92);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+    transform: none;
+    background: rgba(255, 255, 255, 0.18);
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  @media (max-width: 640px) {
+    width: 100%;
   }
 `;
 

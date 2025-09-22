@@ -39,6 +39,10 @@ import {
   ResultTitle,
   ResultsGrid,
   ResultsPanel,
+  SearchBarButton,
+  SearchBarForm,
+  SearchBarIcon,
+  SearchBarInput,
   SearchHeader,
   Sidebar,
   SidebarCard,
@@ -126,12 +130,17 @@ const formatYear = (date?: string) => {
 const fallbackOverview = "No synopsis available yet. Check back soon!";
 
 export const SearchPage: React.FC = () => {
-  const [searchParams] = useSearchParams();
-  const initialQuery = searchParams.get("query") ?? "";
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryParam = searchParams.get("query") ?? "";
+  const [searchInput, setSearchInput] = useState(queryParam);
   const [activeTab, setActiveTab] = useState<SearchTab>("all");
   const [filters, setFilters] = useState<SearchFilters>({ ...DEFAULT_FILTERS });
 
-  const normalizedQuery = initialQuery.trim();
+  useEffect(() => {
+    setSearchInput(queryParam);
+  }, [queryParam]);
+
+  const normalizedQuery = queryParam.trim();
   const debouncedQuery = useDebouncedValue(normalizedQuery, 450);
 
   useEffect(() => {
@@ -166,6 +175,29 @@ export const SearchPage: React.FC = () => {
     queryFn: fetchDailyTrending,
     staleTime: 1000 * 60 * 60,
   });
+
+  const trimmedInput = searchInput.trim();
+  const isSubmitDisabled =
+    trimmedInput.length === 0 && normalizedQuery.length === 0;
+  const submitLabel =
+    normalizedQuery.length > 0 && trimmedInput.length === 0
+      ? "Clear"
+      : "Search";
+
+  const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const normalizedInput = searchInput.trim();
+    const nextParams = new URLSearchParams(searchParams);
+
+    if (normalizedInput) {
+      nextParams.set("query", normalizedInput);
+    } else {
+      nextParams.delete("query");
+    }
+
+    setSearchParams(nextParams);
+  };
 
   const handleTypeChange = (value: NonNullable<SearchFilters["type"]>) => {
     setFilters((previous) => ({ ...previous, type: value }));
@@ -207,6 +239,19 @@ export const SearchPage: React.FC = () => {
               ? `Results for "${debouncedQuery}"`
               : "Use the search bar to discover movies, shows, and more."}
           </QuerySubtitle>
+          <SearchBarForm role="search" onSubmit={handleSearchSubmit}>
+            <SearchBarIcon aria-hidden="true">🔍</SearchBarIcon>
+            <SearchBarInput
+              type="search"
+              placeholder="Search for titles, people, or genres"
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              aria-label="Search StreamFlix"
+            />
+            <SearchBarButton type="submit" disabled={isSubmitDisabled}>
+              {submitLabel}
+            </SearchBarButton>
+          </SearchBarForm>
         </SearchHeader>
 
         <ContentLayout>
