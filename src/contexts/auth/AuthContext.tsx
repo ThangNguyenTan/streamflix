@@ -6,7 +6,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [user, setUser] = useState<User | null>(null);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, _password: string) => {
     // Simulate API call here
     return new Promise<void>((resolve) => {
       setTimeout(() => {
@@ -21,7 +21,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   };
 
-  const signup = async (username: string, email: string, password: string) => {
+  const signup = async (
+    username: string,
+    email: string,
+    _password: string
+  ) => {
     // Simulate API call here
     return new Promise<void>((resolve) => {
       setTimeout(() => {
