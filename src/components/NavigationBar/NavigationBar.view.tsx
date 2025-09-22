@@ -1,42 +1,81 @@
-import React, { useState, useRef, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useEffect, useRef, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import {
   NavContainer,
   NavContent,
+  NavLeft,
+  NavRight,
   LogoSection,
   Logo,
+  LogoMark,
+  LogoText,
   NavLinks,
   NavLink,
+  IconGroup,
+  IconButton,
   UserSection,
   UserProfile,
   UserAvatar,
   UserName,
+  UserChevron,
   AuthButtons,
   AuthButton,
   MobileMenuButton,
   DropdownMenu,
   DropdownItem,
   SearchContainer,
+  SearchForm,
   SearchInput,
   SearchIcon,
 } from "./NavigationBar.styled";
 
+const NAVIGATION_LINKS = [
+  { label: "Home", path: "/" },
+  { label: "Movies", path: "/movies" },
+  { label: "TV Shows", path: "/tvshows" },
+  { label: "My List", path: "/my-list" },
+] as const;
+
 export const NavigationBar: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isScrolled, setIsScrolled] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);\r\n\r\n  useEffect(() => {\r\n    if (typeof window === "undefined") {\r\n      return;\r\n    }\r\n\r\n    const handleScroll = () => {\r\n      setIsScrolled(window.scrollY > 40);\r\n    };\r\n\r\n    handleScroll();\r\n\r\n    window.addEventListener("scroll", handleScroll);\r\n    return () => {\r\n      window.removeEventListener("scroll", handleScroll);\r\n    };\r\n  }, []);\r\n\r\n  // Close dropdown when clicking outside
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 40);
+    };
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setIsDropdownOpen(false);
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
+
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
@@ -48,107 +87,151 @@ export const NavigationBar: React.FC = () => {
     navigate("/");
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     if (searchQuery.trim()) {
       // TODO: Implement search functionality
       console.log("Searching for:", searchQuery);
     }
   };
 
-  const getInitials = (name: string) => {
-    return name
+  const getInitials = (name: string) =>
+    name
       .split(" ")
-      .map((n) => n[0])
+      .map((part) => part[0])
       .join("")
       .toUpperCase()
       .slice(0, 2);
+
+  const isPathActive = (path: string) => {
+    if (path === "/") {
+      return location.pathname === "/";
+    }
+
+    return location.pathname.startsWith(path);
   };
 
   return (
     <NavContainer isScrolled={isScrolled}>
       <NavContent>
-        {/* Logo Section */}
-        <LogoSection>
-          <Link to="/" style={{ textDecoration: "none" }}>
-            <Logo>StreamFlix</Logo>
-          </Link>
-        </LogoSection>
+        <NavLeft>
+          <LogoSection>
+            <Link to="/" style={{ textDecoration: "none" }}>
+              <Logo>
+                <LogoMark>S</LogoMark>
+                <LogoText>
+                  Stream<strong>Flix</strong>
+                </LogoText>
+              </Logo>
+            </Link>
+          </LogoSection>
 
-        {/* Navigation Links - Only show for authenticated users */}
-        {user && (
-          <NavLinks>
-            <NavLink as={Link} to="/">
-              Home
-            </NavLink>
-            <NavLink as={Link} to="/movies">
-              Movies
-            </NavLink>
-            <NavLink as={Link} to="/tvshows">
-              TV Shows
-            </NavLink>
-            <NavLink as={Link} to="/my-list">
-              My List
-            </NavLink>
-          </NavLinks>
-        )}
+          {user && (
+            <NavLinks>
+              {NAVIGATION_LINKS.map((link) => (
+                <NavLink
+                  key={link.path}
+                  as={Link}
+                  to={link.path}
+                  $isActive={isPathActive(link.path)}
+                >
+                  {link.label}
+                </NavLink>
+              ))}
+            </NavLinks>
+          )}
+        </NavLeft>
 
-        {/* Search Bar - Only show for authenticated users */}
-        {user && (
-          <SearchContainer>
-            <form onSubmit={handleSearch}>
-              <SearchIcon>🔍</SearchIcon>
-              <SearchInput
-                type="text"
-                placeholder="Search movies, TV shows..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </form>
-          </SearchContainer>
-        )}
+        <NavRight>
+          {user && (
+            <>
+              <SearchContainer>
+                <SearchForm
+                  onSubmit={handleSearch}
+                  $isFocused={isSearchFocused || Boolean(searchQuery)}
+                >
+                  <SearchIcon aria-hidden="true">🔍</SearchIcon>
+                  <SearchInput
+                    type="text"
+                    placeholder="Titles, people, genres"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    onFocus={() => setIsSearchFocused(true)}
+                    onBlur={() => setIsSearchFocused(false)}
+                    $isFocused={isSearchFocused || Boolean(searchQuery)}
+                    aria-label="Search titles"
+                  />
+                </SearchForm>
+              </SearchContainer>
 
-        {/* User Section or Auth Buttons */}
-        {user ? (
-          <UserSection>
-            <UserProfile
-              ref={dropdownRef}
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            >
-              <UserAvatar>{getInitials(user.username)}</UserAvatar>
-              <UserName>{user.username}</UserName>
-            </UserProfile>
+              <IconGroup>
+                <IconButton type="button" aria-label="Help center">
+                  ?
+                </IconButton>
+                <IconButton type="button" aria-label="Notifications">
+                  🔔
+                </IconButton>
+              </IconGroup>
+            </>
+          )}
 
-            <DropdownMenu isOpen={isDropdownOpen}>
-              <DropdownItem onClick={() => navigate("/profile")}>
-                Profile
-              </DropdownItem>
-              <DropdownItem onClick={() => navigate("/settings")}>
-                Settings
-              </DropdownItem>
-              <DropdownItem onClick={() => navigate("/my-list")}>
-                My List
-              </DropdownItem>
-              <DropdownItem onClick={handleLogout}>
-                Logout
-              </DropdownItem>
-            </DropdownMenu>
-          </UserSection>
-        ) : (
-          <AuthButtons>
-            <AuthButton as={Link} to="/login" variant="secondary">
-              Sign In
-            </AuthButton>
-            <AuthButton as={Link} to="/signup" variant="primary">
-              Sign Up
-            </AuthButton>
-          </AuthButtons>
-        )}
+          {user ? (
+            <UserSection ref={dropdownRef}>
+              <UserProfile
+                type="button"
+                onClick={() => setIsDropdownOpen((prev) => !prev)}
+                $isOpen={isDropdownOpen}
+              >
+                <UserAvatar>{getInitials(user.username)}</UserAvatar>
+                <UserName>{user.username}</UserName>
+                <UserChevron $isOpen={isDropdownOpen} aria-hidden="true">
+                  ▾
+                </UserChevron>
+              </UserProfile>
 
-        {/* Mobile Menu Button */}
-        <MobileMenuButton>
-          ☰
-        </MobileMenuButton>
+              <DropdownMenu isOpen={isDropdownOpen}>
+                <DropdownItem
+                  onClick={() => {
+                    setIsDropdownOpen(false);
+                    navigate("/profile");
+                  }}
+                >
+                  Profile
+                </DropdownItem>
+                <DropdownItem
+                  onClick={() => {
+                    setIsDropdownOpen(false);
+                    navigate("/settings");
+                  }}
+                >
+                  Settings
+                </DropdownItem>
+                <DropdownItem
+                  onClick={() => {
+                    setIsDropdownOpen(false);
+                    navigate("/my-list");
+                  }}
+                >
+                  My List
+                </DropdownItem>
+                <DropdownItem onClick={handleLogout}>Logout</DropdownItem>
+              </DropdownMenu>
+            </UserSection>
+          ) : (
+            <AuthButtons>
+              <AuthButton as={Link} to="/login" variant="secondary">
+                Sign In
+              </AuthButton>
+              <AuthButton as={Link} to="/signup" variant="primary">
+                Sign Up
+              </AuthButton>
+            </AuthButtons>
+          )}
+
+          <MobileMenuButton type="button" aria-label="Open navigation">
+            ☰
+          </MobileMenuButton>
+        </NavRight>
       </NavContent>
     </NavContainer>
   );
